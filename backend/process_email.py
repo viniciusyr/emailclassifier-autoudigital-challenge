@@ -4,6 +4,7 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 
 nltk.download("punkt")
+nltk.download("punkt_tab")
 nltk.download("stopwords")
 nltk.download("wordnet")
 
