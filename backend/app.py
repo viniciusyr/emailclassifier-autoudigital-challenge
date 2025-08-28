@@ -1,8 +1,13 @@
 from fastapi import FastAPI, Form
 
+
 app = FastAPI(title="Email Classifier - AutoU")
 
 #allow CORS later if necessary
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
 
 @app.post("/read")
 async def read_email(text: str = Form(...)):
