@@ -2,9 +2,22 @@ from fastapi import FastAPI, Form, UploadFile
 from classifier import classify_email
 from response_generator import generate_response
 from process_email import process_email
+from pydantic import BaseModel
 
 
 app = FastAPI(title="Email Classifier - AutoU")
+
+class EmailInput(BaseModel):
+    text: str
+
+#Just for testing
+@app.post("/read/json")
+async def read_email_json(input: EmailInput):
+    content = input.text
+    category = classify_email(content)
+    response = generate_response(category)
+
+    return {"categoria": category, "resposta": response}
 
 #allow CORS later if necessary
 @app.post("/read")
