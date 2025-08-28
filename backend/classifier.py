@@ -4,7 +4,7 @@ def classify_email(text: str) -> str:
     cleaned_text = process_email(text)
 
     #Mock keywords
-    productive_keywords = ["reunião", "projeto", "deadline", "relatório", "horário"]
+    productive_keywords = ["reunião", "projeto", "deadline", "relatório", "horário", "sucesso"]
     unproductive_keywords = ["zoeira", "parabéns", "festa", "promoção", "oferta", "brincadeira"]
 
     if any(word in cleaned_text for word in productive_keywords):
