@@ -1,3 +1,11 @@
 #env
-/backend/.env
+.env
 *.env
+/backend/.env
+backend/.env
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
