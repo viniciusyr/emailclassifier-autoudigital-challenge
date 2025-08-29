@@ -1,15 +1,47 @@
-from process_email import process_email
+import json
+import os
+from openai import OpenAI
+from dotenv import load_dotenv
 
-def classify_email(text: str) -> str:
-    cleaned_text = process_email(text)
+load_dotenv()
 
-    #Mock keywords
-    productive_keywords = ["reunião", "projeto", "deadline", "relatório", "horário", "sucesso"]
-    unproductive_keywords = ["zoeira", "parabéns", "festa", "promoção", "oferta", "brincadeira"]
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    if any(word in cleaned_text for word in productive_keywords):
-        return "Produtivo"
-    elif any(word in cleaned_text for word in unproductive_keywords):
-        return "Improdutivo"
-    else:
-        raise ValueError("Não foi possível classificar este email através de keywords")
+def classify_email(email_text: str):
+    prompt = f"""
+    Você é um classificador de emails.
+    Leia o email abaixo e retorne SOMENTE um JSON válido (sem texto extra, sem explicações) no formato:
+
+    {{
+      "Categoria": "Produtivo" ou "Improdutivo",
+      "Resposta": "Mensagem curta e educada em português brasileiro"
+    }}
+
+    Categorias:
+    - Produtivo: emails que exigem ação ou resposta.
+    - Improdutivo: emails sem necessidade de ação imediata.
+
+    Email:
+    {email_text}
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        max_completion_tokens=200,
+        temperature=0
+    )
+
+    content = response.choices[0].message.content.strip()
+
+    try:
+        result =json.loads(content)
+    except json.JSONDecodeError:
+        import re
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            result = json.loads(match.group(0))
+        else:
+            result = {"Categoria": "Improdutivo", "Resposta": "Não foi possível classificar o email."}
+
+    return result

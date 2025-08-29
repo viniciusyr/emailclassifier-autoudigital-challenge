@@ -1,4 +1,9 @@
 fastapi
 uvicorn
+dotenv
 nltk
 pydantic
+transformers
+torch
+sentencepiece
+openai
