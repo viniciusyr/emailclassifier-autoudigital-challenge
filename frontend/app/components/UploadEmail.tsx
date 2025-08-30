@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 
 interface UploadEmailProps {
-  onResult: (result: { Categoria: string; Resposta: string }) => void;
+  onResult: (result: { category: string; response: string }) => void;
 }
 
 export default function UploadEmail({ onResult }: UploadEmailProps) {
@@ -13,9 +13,16 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
+   const handleResult = (data: { category: string; response: string }) => {
+    onResult({
+      category: data.category,
+      response: data.response
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
+    if (!file && !text) return alert('Envie um arquivo (.txt ou .pdf) ou digite o texto.');
 
     const formData = new FormData();
     if (file) formData.append('file', file);
@@ -27,7 +34,7 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
       const res = await axios.post('http://0.0.0.0:8000/read', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      onResult(res.data); 
+      handleResult(res.data); 
     } catch (err) {
       console.error(err);
       alert('Erro ao processar email.');
