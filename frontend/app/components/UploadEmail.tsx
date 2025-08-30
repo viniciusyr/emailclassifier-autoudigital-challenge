@@ -1,10 +1,14 @@
 'use client';
 import { useState, DragEvent } from 'react';
-import axios from 'axios';
 import { motion } from 'framer-motion';
 
+interface EmailResult {
+  category: string;
+  response: string;
+}
+
 interface UploadEmailProps {
-  onResult: (result: { category: string; response: string }) => void;
+  onResult: (result: EmailResult) => void;
 }
 
 export default function UploadEmail({ onResult }: UploadEmailProps) {
@@ -18,24 +22,57 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
 
     const formData = new FormData();
-    if (file) formData.append('file', file);
+    if (file) formData.append('files', file); // mudar para 'files' se for múltiplos
     if (!file && text) formData.append('text', text);
 
     try {
       setLoading(true);
-      const res = await axios.post('http://0.0.0.0:8000/read', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+
+      const res = await fetch('http://0.0.0.0:8000/read', {
+        method: 'POST',
+        body: formData,
       });
 
-      // Mapear backend → frontend
-      onResult({
-        category: res.data.Categoria,
-        response: res.data.Resposta
-      });
+      if (!res.body) throw new Error('No response body');
 
-      // Limpa inputs após envio
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        let lines = buffer.split('\n');
+
+        // manter o último pedaço no buffer (pode estar incompleto)
+        buffer = lines.pop() || '';
+
+        for (let line of lines) {
+          if (line.trim()) {
+            const data = JSON.parse(line);
+            onResult({
+              category: data.Categoria,
+              response: data.Resposta,
+            });
+          }
+        }
+      }
+
+      // processa o restante do buffer
+      if (buffer.trim()) {
+        const data = JSON.parse(buffer);
+        onResult({
+          category: data.Categoria,
+          response: data.Resposta,
+        });
+      }
+
+      // limpa inputs após envio
       setFile(null);
       setText('');
+
     } catch (err) {
       console.error(err);
       alert('Erro ao processar email.');
