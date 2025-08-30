@@ -3,9 +3,14 @@ import json
 from openai import OpenAI
 from dotenv import load_dotenv
 
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(__file__), "../.env")
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise RuntimeError("OPENAI_API_KEY isn't definida. Configure a variável de ambiente ou o .env")
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=api_key)
 
 def classify_email(email_text: str):
     prompt = f"""
