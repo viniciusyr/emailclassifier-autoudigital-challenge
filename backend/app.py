@@ -49,10 +49,15 @@ async def read_email(files: list[UploadFile] = None, text: str = Form(None)):
         return {"error": "Invalid data"}
 
     async def event_stream():
+        all_emails = []
         for raw in contents:
-            for email in split_emails(raw):
-                clean_text = process_email(email)
-                result = classify_email(clean_text)
-                yield json.dumps(result) + "\n"
+            all_emails.extend(split_emails(raw))
+
+        yield json.dumps({"total": len(all_emails)}) + "\n"
+
+        for email in all_emails:
+            clean_text = process_email(email)
+            result = classify_email(clean_text)
+            yield json.dumps(result) + "\n"
 
     return StreamingResponse(event_stream(), media_type="application/json")
