@@ -22,7 +22,7 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
 
     const formData = new FormData();
-    if (file) formData.append('files', file); // mudar para 'files' se for múltiplos
+    if (file) formData.append('files', file);
     if (!file && text) formData.append('text', text);
 
     try {
@@ -33,43 +33,51 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
         body: formData,
       });
 
+      if (!res.ok) throw new Error('Erro no servidor');
       if (!res.body) throw new Error('No response body');
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-
       let buffer = '';
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        let lines = buffer.split('\n');
 
-        // manter o último pedaço no buffer (pode estar incompleto)
-        buffer = lines.pop() || '';
+        // processa múltiplas linhas por chunk
+        let lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // sobra incompleta volta pro buffer
 
         for (let line of lines) {
           if (line.trim()) {
-            const data = JSON.parse(line);
-            onResult({
-              category: data.Categoria,
-              response: data.Resposta,
-            });
+            try {
+              const data = JSON.parse(line);
+              onResult({
+                category: data.Categoria,
+                response: data.Resposta,
+              });
+            } catch (err) {
+              console.error('Erro parse JSON parcial:', err, line);
+            }
           }
         }
       }
 
-      // processa o restante do buffer
+      // processa o que restar no buffer
       if (buffer.trim()) {
-        const data = JSON.parse(buffer);
-        onResult({
-          category: data.Categoria,
-          response: data.Resposta,
-        });
+        try {
+          const data = JSON.parse(buffer);
+          onResult({
+            category: data.Categoria,
+            response: data.Resposta,
+          });
+        } catch (err) {
+          console.error('Erro parse JSON final:', err, buffer);
+        }
       }
 
-      // limpa inputs após envio
       setFile(null);
       setText('');
 

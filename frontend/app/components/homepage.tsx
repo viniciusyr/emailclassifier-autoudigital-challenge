@@ -1,22 +1,46 @@
 'use client';
-import { useState, useEffect } from 'react';
-import UploadEmail from '../components/UploadEmail';
-import Result from '../components/Result';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import UploadEmail from './UploadEmail';
+
+interface Result {
+  category: string;
+  response: string;
+}
 
 export default function Home() {
-  const [result, setResult] = useState<{ category: string; response: string } | null>(null);
+  const [results, setResults] = useState<Result[]>([]);
 
-  useEffect(() => {
-    if (result) console.log(result);
-  }, [result]);
+  const handleNewResult = (result: Result) => {
+    setResults((prev) => [...prev, result]);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
-      <h1 className="text-3xl font-bold mb-6">Classificador de Emails AI</h1>
+    <main className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+        Classificador de Emails
+      </h1>
 
-      <UploadEmail onResult={setResult} />
+      <UploadEmail onResult={handleNewResult} />
 
-      {result && <Result category={result.category} response={result.response} />}
-    </div>
+      <div className="mt-10 w-full max-w-2xl space-y-4">
+        {results.map((res, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white shadow rounded-lg p-4 border border-gray-200"
+          >
+            <p className="text-sm text-gray-500">Categoria: 
+              <span className="font-semibold text-gray-700 ml-2">
+                {res.category}
+              </span>
+            </p>
+            <p className="mt-2 text-gray-700">{res.response}</p>
+          </motion.div>
+        ))}
+      </div>
+    </main>
   );
 }
