@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, Form, json
+from fastapi import FastAPI, UploadFile, Form
+import json
 from classifier import classify_email
 from process_email import process_email
 from pydantic import BaseModel
