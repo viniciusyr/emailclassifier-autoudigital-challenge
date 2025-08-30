@@ -17,6 +17,10 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
+  // novos estados para progresso
+  const [total, setTotal] = useState<number | null>(null);
+  const [processed, setProcessed] = useState(0);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
@@ -27,6 +31,8 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
 
     try {
       setLoading(true);
+      setTotal(null);
+      setProcessed(0);
 
       const res = await fetch('http://0.0.0.0:8000/read', {
         method: 'POST',
@@ -46,18 +52,24 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
 
         buffer += decoder.decode(value, { stream: true });
 
-        // processa múltiplas linhas por chunk
         let lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // sobra incompleta volta pro buffer
+        buffer = lines.pop() || '';
 
         for (let line of lines) {
           if (line.trim()) {
             try {
               const data = JSON.parse(line);
-              onResult({
-                category: data.Categoria,
-                response: data.Resposta,
-              });
+
+              // primeiro evento = total
+              if ('total' in data) {
+                setTotal(data.total);
+              } else {
+                onResult({
+                  category: data.Categoria,
+                  response: data.Resposta,
+                });
+                setProcessed((prev) => prev + 1);
+              }
             } catch (err) {
               console.error('Erro parse JSON parcial:', err, line);
             }
@@ -65,14 +77,18 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
         }
       }
 
-      // processa o que restar no buffer
       if (buffer.trim()) {
         try {
           const data = JSON.parse(buffer);
-          onResult({
-            category: data.Categoria,
-            response: data.Resposta,
-          });
+          if ('total' in data) {
+            setTotal(data.total);
+          } else {
+            onResult({
+              category: data.Categoria,
+              response: data.Resposta,
+            });
+            setProcessed((prev) => prev + 1);
+          }
         } catch (err) {
           console.error('Erro parse JSON final:', err, buffer);
         }
@@ -80,7 +96,6 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
 
       setFile(null);
       setText('');
-
     } catch (err) {
       console.error(err);
       alert('Erro ao processar email.');
@@ -104,6 +119,9 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
       setFile(e.dataTransfer.files[0]);
     }
   };
+
+  const progress =
+    total && total > 0 ? Math.round((processed / total) * 100) : 0;
 
   return (
     <motion.form
@@ -146,6 +164,21 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
       >
         {loading ? 'Processando...' : 'Enviar'}
       </button>
+
+      {total !== null && (
+        <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
+          <div
+            className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          ></div>
+        </div>
+      )}
+
+      {total !== null && (
+        <p className="text-sm text-gray-600 text-center">
+          Processados {processed} de {total} ({progress}%)
+        </p>
+      )}
     </motion.form>
   );
 }
