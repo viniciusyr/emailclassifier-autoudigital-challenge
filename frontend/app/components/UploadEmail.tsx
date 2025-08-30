@@ -23,7 +23,7 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
 
     try {
       setLoading(true);
-      const res = await axios.post('http://0.0.0.0:8000/process_email', formData, {
+      const res = await axios.post('http://0.0.0.0:8000/read', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       onResult(res.data);
