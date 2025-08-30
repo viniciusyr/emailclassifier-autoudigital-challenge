@@ -3,8 +3,6 @@ uvicorn
 dotenv
 nltk
 pydantic
-transformers
-torch
 sentencepiece
 openai
 python-multipart
