@@ -1,6 +1,5 @@
 'use client';
-
-import { useState } from 'react';
+import { useState, DragEvent } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
@@ -12,6 +11,7 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,19 +19,36 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
 
     const formData = new FormData();
     if (file) formData.append('file', file);
-    if (text) formData.append('text', text);
+    if (!file && text) formData.append('text', text);
 
     try {
       setLoading(true);
+    
       const res = await axios.post('http://0.0.0.0:8000/read', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      onResult(res.data);
+      onResult(res.data); 
     } catch (err) {
       console.error(err);
       alert('Erro ao processar email.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setFile(e.dataTransfer.files[0]);
     }
   };
 
@@ -42,22 +59,36 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col gap-4 w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md"
     >
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`border-2 border-dashed p-6 rounded cursor-pointer text-center transition-colors ${
+          dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+        }`}
+        onClick={() => document.getElementById('fileInput')?.click()}
+      >
+        {file ? file.name : 'Arraste um arquivo ou clique para selecionar (.txt, .pdf)'}
+      </div>
       <input
         type="file"
+        id="fileInput"
         accept=".txt,.pdf"
+        className="hidden"
         onChange={(e) => setFile(e.target.files?.[0] || null)}
-        className="border p-2 rounded"
       />
+
       <textarea
         placeholder="Ou digite seu email aqui..."
         value={text}
         onChange={(e) => setText(e.target.value)}
         className="border p-2 rounded resize-none h-32"
       />
+
       <button
         type="submit"
-        className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
         disabled={loading}
+        className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
       >
         {loading ? 'Processando...' : 'Enviar'}
       </button>
