@@ -32,6 +32,5 @@ async def read_email(text: str = Form(None), file: UploadFile = None):
     result = classify_email(clean_text)
 
     return {
-        "email": content,
-        **result
+        result
     }
