@@ -1,16 +1,29 @@
-from fastapi import FastAPI, Form, UploadFile
+from fastapi import FastAPI, StreamingResponse
 from classifier import classify_email
 from process_email import process_email
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+
 
 
 app = FastAPI(title="Email Classifier - AutoU")
 
+origins = [
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000"                     
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,       
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],         
+    allow_headers=["*"],        
+)
+
 class EmailInput(BaseModel):
     text: str
 
-# Just for testing with JSON input
-# Allow CORS here later (if necessary)
 @app.post("/read/json")
 async def read_email_json(input: EmailInput):
     content = input.text
@@ -18,17 +31,25 @@ async def read_email_json(input: EmailInput):
     return result
 
 @app.post("/read")
-async def read_email(text: str = Form(None), file: UploadFile = None):
-    content = ""
+async def read_email(files: list[UploadFile] = None, text: str = Form(None)):
+    async def event_stream():
+        contents = []
 
-    if file:
-        content = (await file.read()).decode("utf-8", errors="ignore")
-    elif text:
-        content = text
-    else:
-        return {"Error": "Invalid data"}
+        if files:
+            for file in files:
+                raw = (await file.read()).decode("utf-8", errors="ignore")
+                contents.append(raw)
+        elif text:
+            contents.append(text)
+        else:
+            yield json.dumps({"error": "Invalid data"}) + "\n"
+            return
 
-    clean_text = process_email(content)
-    result = classify_email(clean_text)
 
-    return result
+        for raw in contents:
+            for email in split_emails(raw):
+                clean_text = process_email(email)
+                result = classify_email(clean_text)
+                yield json.dumps(result) + "\n"
+
+    return StreamingResponse(event_stream(), media_type="application/json")

@@ -13,16 +13,9 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-   const handleResult = (data: { category: string; response: string }) => {
-    onResult({
-      category: data.category,
-      response: data.response
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file && !text) return alert('Envie um arquivo (.txt ou .pdf) ou digite o texto.');
+    if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
 
     const formData = new FormData();
     if (file) formData.append('file', file);
@@ -30,11 +23,19 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
 
     try {
       setLoading(true);
-    
       const res = await axios.post('http://0.0.0.0:8000/read', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      handleResult(res.data); 
+
+      // Mapear backend → frontend
+      onResult({
+        category: res.data.Categoria,
+        response: res.data.Resposta
+      });
+
+      // Limpa inputs após envio
+      setFile(null);
+      setText('');
     } catch (err) {
       console.error(err);
       alert('Erro ao processar email.');
@@ -77,6 +78,7 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
       >
         {file ? file.name : 'Arraste um arquivo ou clique para selecionar (.txt, .pdf)'}
       </div>
+
       <input
         type="file"
         id="fileInput"
