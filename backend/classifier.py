@@ -1,5 +1,5 @@
-import json
 import os
+import json
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -14,7 +14,7 @@ def classify_email(email_text: str):
 
     {{
       "Categoria": "Produtivo" ou "Improdutivo",
-      "Resposta": "Mensagem curta e educada em português brasileiro"
+      "Resposta": " Olá "nome do remetente", "Mensagem curta e educada". Atenciosamente, "
     }}
 
     Categorias:
