@@ -1,9 +1,10 @@
-from fastapi import FastAPI, StreamingResponse, UploadFile, Form, json
+from fastapi import FastAPI, UploadFile, Form, json
 from classifier import classify_email
 from process_email import process_email
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from split_emails import split_emails
+from starlette.responses import StreamingResponse
 
 
 
