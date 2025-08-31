@@ -30,7 +30,7 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/read`, {
+      const res = await fetch(`/api/proxy-read`, {
         method: 'POST',
         body: formData,
         signal: controller.signal,
