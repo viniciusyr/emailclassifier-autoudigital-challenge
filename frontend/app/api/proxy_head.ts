@@ -14,6 +14,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(204).end();
   }
 
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST, OPTIONS');
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const headers: Record<string, string> = {};
@@ -21,22 +26,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (typeof value === 'string' && key.toLowerCase() !== 'host') headers[key] = value;
   }
 
-  const fetchRes = await fetch(`${API_URL}/read`, {
-    method: 'POST',
-    body: req.body,
-    headers,
-  });
+  try {
+    const fetchRes = await fetch(`${API_URL}/read`, {
+      method: 'POST',
+      body: req.body,
+      headers,
+    });
 
-  if (!fetchRes.body) return res.status(500).end();
+    if (!fetchRes.body) return res.status(500).end();
 
-  res.setHeader('Content-Type', fetchRes.headers.get('content-type') || 'application/json');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', fetchRes.headers.get('content-type') || 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
 
-  const reader = fetchRes.body.getReader();
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    res.write(Buffer.from(value));
+    const reader = fetchRes.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      res.write(Buffer.from(value));
+    }
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao conectar com o backend' });
   }
-  res.end();
 }
