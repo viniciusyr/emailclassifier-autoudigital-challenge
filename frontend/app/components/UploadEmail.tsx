@@ -39,6 +39,7 @@ export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEm
       const res = await fetch('http://0.0.0.0:8000/read', {
         method: 'POST',
         body: formData,
+        signal: abortSignal ?? undefined,
       });
 
       if (!res.ok) throw new Error('Erro no servidor');
