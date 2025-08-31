@@ -15,8 +15,6 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
   const processEmails = async (file: File | null, text: string) => {
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
 
