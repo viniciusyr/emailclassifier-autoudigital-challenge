@@ -29,6 +29,10 @@ running_tasks = {}
 class EmailInput(BaseModel):
     text: str
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.post("/read/json")
 async def read_email_json(input: EmailInput):
     content = input.text
