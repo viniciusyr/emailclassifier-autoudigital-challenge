@@ -1,7 +1,6 @@
 'use client';
-import { useState, DragEvent } from 'react';
+import { useState, DragEvent, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { on } from 'events';
 
 interface EmailResult {
   category: string;
@@ -10,11 +9,11 @@ interface EmailResult {
 
 interface UploadEmailProps {
   onResult: (result: EmailResult) => void;
-  onStart: (total: number) => void;
-  abortSignal?: AbortSignal;
+  onStart: (total: number, processId: string) => void;
+  abortController: AbortController | null;
 }
 
-export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEmailProps) {
+export default function UploadEmail({ onResult, onStart, abortController }: UploadEmailProps) {
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,10 +21,17 @@ export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEm
 
   const [total, setTotal] = useState<number | null>(null);
   const [processed, setProcessed] = useState(0);
+  const [message, setMessage] = useState<string | null>(null);
+  const [processId, setProcessId] = useState<string>('');
+
+  useEffect(() => {
+    setMessage(null);
+  }, [file, text]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
+    if (!abortController) return;
 
     const formData = new FormData();
     if (file) formData.append('files', file);
@@ -35,62 +41,66 @@ export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEm
       setLoading(true);
       setTotal(null);
       setProcessed(0);
+      setMessage(null);
 
       const res = await fetch('http://0.0.0.0:8000/read', {
         method: 'POST',
         body: formData,
-        signal: abortSignal ?? undefined,
+        signal: abortController.signal,
       });
 
       if (!res.ok) throw new Error('Erro no servidor');
       if (!res.body) throw new Error('No response body');
 
+      // O backend envia o processId como primeiro JSON
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let firstLine = true;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        if (abortController.signal.aborted) {
+          setMessage('Processamento interrompido pelo usuário.');
+          console.log('Upload interrompido pelo usuário.');
+          break;
+        }
 
+        buffer += decoder.decode(value, { stream: true });
         let lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
         for (let line of lines) {
-          if (line.trim()) {
-            try {
-              const data = JSON.parse(line);
+          if (!line.trim()) continue;
 
-              
-              if ('total' in data) {
-                setTotal(data.total);
-                onStart(data.total);
-              } else {
-                onResult({
-                  category: data.Categoria,
-                  response: data.Resposta,
-                });
-                setProcessed((prev) => prev + 1);
-              }
-            } catch (err) {
-              console.error('Erro parse JSON parcial:', err, line);
+          try {
+            const data = JSON.parse(line);
+
+            if (firstLine && 'process_id' in data) {
+              setProcessId(data.process_id);
+              firstLine = false;
+            } else if ('total' in data) {
+              setTotal(data.total);
+              onStart(data.total, processId);
+            } else {
+              onResult({ category: data.Categoria, response: data.Resposta });
+              setProcessed((prev) => prev + 1);
             }
+          } catch (err) {
+            console.error('Erro parse JSON parcial:', err, line);
           }
         }
       }
 
-      if (buffer.trim()) {
+      if (buffer.trim() && !abortController.signal.aborted) {
         try {
           const data = JSON.parse(buffer);
           if ('total' in data) {
             setTotal(data.total);
           } else {
-            onResult({
-              category: data.Categoria,
-              response: data.Resposta,
-            });
+            onResult({ category: data.Categoria, response: data.Resposta });
             setProcessed((prev) => prev + 1);
           }
         } catch (err) {
@@ -100,9 +110,14 @@ export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEm
 
       setFile(null);
       setText('');
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao processar email.');
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setMessage('Processamento interrompido pelo usuário.');
+        console.log('Upload interrompido pelo usuário (catch).');
+      } else {
+        console.error(err);
+        setMessage('Erro ao processar email.');
+      }
     } finally {
       setLoading(false);
     }
@@ -124,8 +139,7 @@ export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEm
     }
   };
 
-  const progress =
-    total && total > 0 ? Math.round((processed / total) * 100) : 0;
+  const progress = total && total > 0 ? Math.round((processed / total) * 100) : 0;
 
   return (
     <motion.form
@@ -163,7 +177,7 @@ export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEm
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !abortController}
         className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
       >
         {loading ? 'Processando...' : 'Enviar'}
@@ -174,7 +188,7 @@ export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEm
           <div
             className="bg-blue-600 h-3 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
-          ></div>
+          />
         </div>
       )}
 
@@ -182,6 +196,10 @@ export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEm
         <p className="text-sm text-gray-600 text-center">
           Processados {processed} de {total} ({progress}%)
         </p>
+      )}
+
+      {message && (
+        <p className="text-sm text-red-600 text-center mt-2">{message}</p>
       )}
     </motion.form>
   );
