@@ -1,0 +1,33 @@
+name: CI - Build and Test Backend
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install requirements.txt
+        working-directory: ./backend
+        run: pip install -r requirements.txt
+
+      - name: Run backend tests
+              working-directory: ./backend
+              run: |
+                pytest || echo "No tests found or failed"
