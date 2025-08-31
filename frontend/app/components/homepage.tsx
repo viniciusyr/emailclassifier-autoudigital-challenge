@@ -1,7 +1,8 @@
 'use client';
 import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
 import UploadEmail from './UploadEmail';
+import ProgressBar from './ProgressBar';
+import ResultCard from './ResultCard';
 
 interface Result {
   category: string;
@@ -18,7 +19,6 @@ export default function HomePage() {
   const [currentProcessId, setCurrentProcessId] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Inicia o processamento e recebe processId e controller
   const handleStart = (total: number, processId: string, controller: AbortController) => {
     abortControllerRef.current = controller;
     setCurrentProcessId(processId);
@@ -32,10 +32,9 @@ export default function HomePage() {
     setResults((prev) => [...prev, newResult]);
   };
 
-  // Para o processamento
   const handleStop = async () => {
     if (abortControllerRef.current) {
-      abortControllerRef.current.abort(); // cancela fetch
+      abortControllerRef.current.abort();
       abortControllerRef.current = null;
 
       if (currentProcessId) {
@@ -43,11 +42,10 @@ export default function HomePage() {
       }
 
       setIsProcessing(false);
-      setIsStopped(true); // indica que foi interrompido
+      setIsStopped(true);
     }
   };
 
-  // Inicia um novo processo
   const handleNew = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -69,7 +67,6 @@ export default function HomePage() {
     <main className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Classificador de Emails</h1>
 
-      {/* UploadEmail só aparece quando não está processando */}
       {!isProcessing && !isStopped && results.length === 0 && (
         <UploadEmail
           key={resetKey}
@@ -80,50 +77,19 @@ export default function HomePage() {
 
       <div className="mt-10 w-full max-w-2xl space-y-4">
         {results.map((res, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`cursor-pointer shadow rounded-lg p-4 border transition ${
-              res.category === 'Produtivo'
-                ? 'bg-green-100 border-green-300 hover:bg-green-200'
-                : 'bg-yellow-100 border-yellow-300 hover:bg-yellow-200'
-            }`}
-          >
-            <p className="text-sm text-gray-600">
-              Categoria:
-              <span className="font-semibold text-gray-800 ml-2">{res.category}</span>
-            </p>
-            <p className="mt-2 text-gray-700">{res.response}</p>
-          </motion.div>
+          <ResultCard key={index} category={res.category} response={res.response} />
         ))}
       </div>
 
-      {/* Barra de status e botões */}
       <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur shadow-md border-t p-4">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <div className="flex-1">
-            <div className="flex justify-between mb-1 text-sm text-gray-600">
-              <span>
-                {isStopped
-                  ? 'Processo interrompido! Clique em Novo para reiniciar'
-                  : isProcessing && totalEmails
-                  ? 'Processando...'
-                  : results.length >= (totalEmails ?? 0) && totalEmails !== null
-                  ? 'Concluído ✅'
-                  : 'Aguardando...'}
-              </span>
-              <span>
-                {results.length}/{totalEmails ?? 0}
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div
-                className="h-3 rounded-full transition-all bg-blue-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+          <ProgressBar
+            progress={progress}
+            total={totalEmails}
+            processed={results.length}
+            isProcessing={isProcessing}
+            isStopped={isStopped}
+          />
 
           <button
             onClick={handleStop}
