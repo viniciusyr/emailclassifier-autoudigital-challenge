@@ -1,11 +1,11 @@
-from fastapi import FastAPI, UploadFile, Form
-import json
+from fastapi import FastAPI, UploadFile, Form, Request
 from classifier import classify_email
 from process_email import process_email
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from split_emails import split_emails
-from starlette.responses import StreamingResponse
+from fastapi.responses import StreamingResponse
+import json
 
 
 
@@ -34,25 +34,32 @@ async def read_email_json(input: EmailInput):
     return result
 
 @app.post("/read")
-async def read_email(files: list[UploadFile] = None, text: str = Form(None)):
+async def read_email(files: list[UploadFile] = None, text: str = Form(None), request: Request = None):
+    contents = []
+
+    if files:
+        for file in files:
+            raw = (await file.read()).decode("utf-8", errors="ignore")
+            contents.append(raw)
+    elif text:
+        contents.append(text)
+    else:
+        return {"error": "Invalid data"}
+
     async def event_stream():
-        contents = []
-
-        if files:
-            for file in files:
-                raw = (await file.read()).decode("utf-8", errors="ignore")
-                contents.append(raw)
-        elif text:
-            contents.append(text)
-        else:
-            yield json.dumps({"error": "Invalid data"}) + "\n"
-            return
-
-
+        all_emails = []
         for raw in contents:
-            for email in split_emails(raw):
-                clean_text = process_email(email)
-                result = classify_email(clean_text)
-                yield json.dumps(result) + "\n"
+            all_emails.extend(split_emails(raw))
+
+        yield json.dumps({"total": len(all_emails)}) + "\n"
+
+        for email in all_emails:
+            if await request.is_disconnected():
+                print("Client disconnected")
+                break
+            
+            clean_text = process_email(email)
+            result = classify_email(clean_text)
+            yield json.dumps(result) + "\n"
 
     return StreamingResponse(event_stream(), media_type="application/json")

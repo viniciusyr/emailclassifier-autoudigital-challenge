@@ -1,6 +1,7 @@
 'use client';
 import { useState, DragEvent } from 'react';
 import { motion } from 'framer-motion';
+import { on } from 'events';
 
 interface EmailResult {
   category: string;
@@ -9,70 +10,96 @@ interface EmailResult {
 
 interface UploadEmailProps {
   onResult: (result: EmailResult) => void;
+  onStart: (total: number) => void;
+  abortSignal?: AbortSignal;
 }
 
-export default function UploadEmail({ onResult }: UploadEmailProps) {
+export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEmailProps) {
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  const [total, setTotal] = useState<number | null>(null);
+  const [processed, setProcessed] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
 
     const formData = new FormData();
-    if (file) formData.append('files', file); // mudar para 'files' se for múltiplos
+    if (file) formData.append('files', file);
     if (!file && text) formData.append('text', text);
 
     try {
       setLoading(true);
+      setTotal(null);
+      setProcessed(0);
 
       const res = await fetch('http://0.0.0.0:8000/read', {
         method: 'POST',
         body: formData,
+        signal: abortSignal ?? undefined,
       });
 
+      if (!res.ok) throw new Error('Erro no servidor');
       if (!res.body) throw new Error('No response body');
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-
       let buffer = '';
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        let lines = buffer.split('\n');
 
-        // manter o último pedaço no buffer (pode estar incompleto)
+        let lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
         for (let line of lines) {
           if (line.trim()) {
-            const data = JSON.parse(line);
-            onResult({
-              category: data.Categoria,
-              response: data.Resposta,
-            });
+            try {
+              const data = JSON.parse(line);
+
+              
+              if ('total' in data) {
+                setTotal(data.total);
+                onStart(data.total);
+              } else {
+                onResult({
+                  category: data.Categoria,
+                  response: data.Resposta,
+                });
+                setProcessed((prev) => prev + 1);
+              }
+            } catch (err) {
+              console.error('Erro parse JSON parcial:', err, line);
+            }
           }
         }
       }
 
-      // processa o restante do buffer
       if (buffer.trim()) {
-        const data = JSON.parse(buffer);
-        onResult({
-          category: data.Categoria,
-          response: data.Resposta,
-        });
+        try {
+          const data = JSON.parse(buffer);
+          if ('total' in data) {
+            setTotal(data.total);
+          } else {
+            onResult({
+              category: data.Categoria,
+              response: data.Resposta,
+            });
+            setProcessed((prev) => prev + 1);
+          }
+        } catch (err) {
+          console.error('Erro parse JSON final:', err, buffer);
+        }
       }
 
-      // limpa inputs após envio
       setFile(null);
       setText('');
-
     } catch (err) {
       console.error(err);
       alert('Erro ao processar email.');
@@ -96,6 +123,9 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
       setFile(e.dataTransfer.files[0]);
     }
   };
+
+  const progress =
+    total && total > 0 ? Math.round((processed / total) * 100) : 0;
 
   return (
     <motion.form
@@ -138,6 +168,21 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
       >
         {loading ? 'Processando...' : 'Enviar'}
       </button>
+
+      {total !== null && (
+        <div className="w-full bg-gray-200 rounded-full h-3 mt-2">
+          <div
+            className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          ></div>
+        </div>
+      )}
+
+      {total !== null && (
+        <p className="text-sm text-gray-600 text-center">
+          Processados {processed} de {total} ({progress}%)
+        </p>
+      )}
     </motion.form>
   );
 }
