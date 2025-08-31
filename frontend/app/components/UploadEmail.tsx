@@ -9,20 +9,17 @@ interface EmailResult {
 
 interface UploadEmailProps {
   onResult: (result: EmailResult) => void;
-  onStart: (total: number, processId: string) => void;
-  abortController: AbortController | null;
+  onStart: (total: number, processId: string, controller: AbortController) => void;
 }
 
-export default function UploadEmail({ onResult, onStart, abortController }: UploadEmailProps) {
+export default function UploadEmail({ onResult, onStart }: UploadEmailProps) {
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-
   const [total, setTotal] = useState<number | null>(null);
   const [processed, setProcessed] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
-  const [processId, setProcessId] = useState<string>('');
 
   useEffect(() => {
     setMessage(null);
@@ -31,40 +28,43 @@ export default function UploadEmail({ onResult, onStart, abortController }: Uplo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
-    if (!abortController) return;
+
+    const controller = new AbortController();
+    setLoading(true);
+    setTotal(null);
+    setProcessed(0);
+    setMessage(null);
 
     const formData = new FormData();
     if (file) formData.append('files', file);
     if (!file && text) formData.append('text', text);
 
     try {
-      setLoading(true);
-      setTotal(null);
-      setProcessed(0);
-      setMessage(null);
-
       const res = await fetch('http://0.0.0.0:8000/read', {
         method: 'POST',
         body: formData,
-        signal: abortController.signal,
+        signal: controller.signal,
       });
 
       if (!res.ok) throw new Error('Erro no servidor');
-      if (!res.body) throw new Error('No response body');
+      if (!res.body) throw new Error('Sem resposta do servidor');
 
-      // O backend envia o processId como primeiro JSON
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let processId = '';
       let firstLine = true;
+
+      // Passa o controller e processId para o homepage
+      onStart(0, '', controller);
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        if (abortController.signal.aborted) {
+        if (controller.signal.aborted) {
           setMessage('Processamento interrompido pelo usuário.');
-          console.log('Upload interrompido pelo usuário.');
+          console.log('Abortado pelo usuário');
           break;
         }
 
@@ -74,16 +74,15 @@ export default function UploadEmail({ onResult, onStart, abortController }: Uplo
 
         for (let line of lines) {
           if (!line.trim()) continue;
-
           try {
             const data = JSON.parse(line);
 
             if (firstLine && 'process_id' in data) {
-              setProcessId(data.process_id);
+              processId = data.process_id;
               firstLine = false;
             } else if ('total' in data) {
               setTotal(data.total);
-              onStart(data.total, processId);
+              onStart(data.total, processId, controller);
             } else {
               onResult({ category: data.Categoria, response: data.Resposta });
               setProcessed((prev) => prev + 1);
@@ -94,12 +93,11 @@ export default function UploadEmail({ onResult, onStart, abortController }: Uplo
         }
       }
 
-      if (buffer.trim() && !abortController.signal.aborted) {
+      if (buffer.trim() && !controller.signal.aborted) {
         try {
           const data = JSON.parse(buffer);
-          if ('total' in data) {
-            setTotal(data.total);
-          } else {
+          if ('total' in data) setTotal(data.total);
+          else {
             onResult({ category: data.Categoria, response: data.Resposta });
             setProcessed((prev) => prev + 1);
           }
@@ -113,7 +111,6 @@ export default function UploadEmail({ onResult, onStart, abortController }: Uplo
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setMessage('Processamento interrompido pelo usuário.');
-        console.log('Upload interrompido pelo usuário (catch).');
       } else {
         console.error(err);
         setMessage('Erro ao processar email.');
@@ -177,7 +174,7 @@ export default function UploadEmail({ onResult, onStart, abortController }: Uplo
 
       <button
         type="submit"
-        disabled={loading || !abortController}
+        disabled={loading}
         className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
       >
         {loading ? 'Processando...' : 'Enviar'}
