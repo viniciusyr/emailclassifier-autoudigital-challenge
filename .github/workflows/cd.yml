@@ -1,3 +1,9 @@
+name: CD - Build and Deploy on GVM
+
+on:
+  push:
+    branches:
+      - main
 jobs:
   deploy:
     runs-on: self-hosted

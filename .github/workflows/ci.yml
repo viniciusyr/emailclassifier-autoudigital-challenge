@@ -1,12 +1,9 @@
-name: CI - Build and Push Docker Image
+name: CI - Build and Test Backend
 
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - development
 
 jobs:
   build-test:
