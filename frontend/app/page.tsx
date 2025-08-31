@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import UploadEmail from '../components/UploadEmail/UploadEmail';
 import ProgressBar from '../components/ProgressBar/ProgressBar';
 import ResultCard from '../components/ResultCard/ResultCard';
+import EnvTest from '../components/Test/EnvTest';
 
 interface Result {
   category: string;
@@ -65,6 +66,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
+      <EnvTest />
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Classificador de Emails</h1>
 
       {!isProcessing && !isStopped && results.length === 0 && (
