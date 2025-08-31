@@ -15,6 +15,8 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+    const API_URL = process.env.PUBLIC_API_URL;
+
   const processEmails = async (file: File | null, text: string) => {
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
 
@@ -28,7 +30,7 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
     setLoading(true);
 
     try {
-      const res = await fetch('http://0.0.0.0:8000/read', {
+      const res = await fetch(`${API_URL}/read`, {
         method: 'POST',
         body: formData,
         signal: controller.signal,

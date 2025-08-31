@@ -1,0 +1,25 @@
+name: CD - Deploy Backend
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Pull Docker image
+        run: docker pull viniciusyr/emailclassifier-autoudigital-challenge-backend:latest
+
+      - name: Stop old container (if exists)
+        run: |
+          docker stop backend-container || true
+          docker rm backend-container || true
+
+      - name: Run new container
+        run: |
+          docker run -d --name backend-container \
+            -p 8000:8000 \
+            -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            viniciusyr/emailclassifier-autoudigital-challenge-backend:latest
