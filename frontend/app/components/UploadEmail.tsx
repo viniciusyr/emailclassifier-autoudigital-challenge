@@ -1,6 +1,7 @@
 'use client';
 import { useState, DragEvent } from 'react';
 import { motion } from 'framer-motion';
+import { on } from 'events';
 
 interface EmailResult {
   category: string;
@@ -9,15 +10,16 @@ interface EmailResult {
 
 interface UploadEmailProps {
   onResult: (result: EmailResult) => void;
+  onStart: (total: number) => void;
+  abortSignal?: AbortSignal;
 }
 
-export default function UploadEmail({ onResult }: UploadEmailProps) {
+export default function UploadEmail({ onResult, onStart, abortSignal }: UploadEmailProps) {
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  // novos estados para progresso
   const [total, setTotal] = useState<number | null>(null);
   const [processed, setProcessed] = useState(0);
 
@@ -60,9 +62,10 @@ export default function UploadEmail({ onResult }: UploadEmailProps) {
             try {
               const data = JSON.parse(line);
 
-              // primeiro evento = total
+              
               if ('total' in data) {
                 setTotal(data.total);
+                onStart(data.total);
               } else {
                 onResult({
                   category: data.Categoria,
