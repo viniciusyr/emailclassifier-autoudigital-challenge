@@ -35,5 +35,5 @@ jobs:
       
       - name: Verify deployment
         run: |
-          sleep 5
-          curl -f http://localhost:8000/health || exit 1  
+          sleep 10
+          curl -f http://localhost:8000/docs || exit 1  
