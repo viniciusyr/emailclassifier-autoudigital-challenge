@@ -11,16 +11,9 @@ import asyncio
 
 app = FastAPI(title="Email Classifier - AutoU")
 
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://emailclassifier-autoudigital-challe.vercel.app",
-    "https://emailclassifier-autoudigital-challenge-kqex2vimu.vercel.app"
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
