@@ -73,7 +73,9 @@ async def read_email(files: list[UploadFile] = None, text: str = Form(None)):
 
         running_tasks.pop(process_id, None)
 
-    return StreamingResponse(event_stream(), media_type="application/json")
+
+    headers = {"Access-Control-Allow-Origin": "*"}
+    return StreamingResponse(event_stream(), media_type="application/json", headers=headers)
 
 
 @app.post("/stop/{process_id}")
