@@ -12,23 +12,27 @@ export default function HomePage() {
   const [results, setResults] = useState<Result[]>([]);
   const [totalEmails, setTotalEmails] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
   const [resetKey, setResetKey] = useState(0);
 
   const [currentProcessId, setCurrentProcessId] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleStart = (total: number, processId: string) => {
-    abortControllerRef.current = new AbortController();
+  // Inicia o processamento e recebe processId e controller
+  const handleStart = (total: number, processId: string, controller: AbortController) => {
+    abortControllerRef.current = controller;
     setCurrentProcessId(processId);
     setResults([]);
     setTotalEmails(total);
     setIsProcessing(true);
+    setIsStopped(false);
   };
 
   const handleNewResult = (newResult: Result) => {
     setResults((prev) => [...prev, newResult]);
   };
 
+  // Para o processamento
   const handleStop = async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort(); // cancela fetch
@@ -39,9 +43,11 @@ export default function HomePage() {
       }
 
       setIsProcessing(false);
+      setIsStopped(true); // indica que foi interrompido
     }
   };
 
+  // Inicia um novo processo
   const handleNew = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -50,6 +56,7 @@ export default function HomePage() {
     setResults([]);
     setTotalEmails(null);
     setIsProcessing(false);
+    setIsStopped(false);
     setResetKey((k) => k + 1);
     setCurrentProcessId('');
   };
@@ -62,12 +69,12 @@ export default function HomePage() {
     <main className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Classificador de Emails</h1>
 
-      {!isProcessing && results.length === 0 && (
+      {/* UploadEmail só aparece quando não está processando */}
+      {!isProcessing && !isStopped && results.length === 0 && (
         <UploadEmail
           key={resetKey}
           onResult={handleNewResult}
           onStart={handleStart}
-          abortController={abortControllerRef.current}
         />
       )}
 
@@ -92,14 +99,17 @@ export default function HomePage() {
         ))}
       </div>
 
+      {/* Barra de status e botões */}
       <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur shadow-md border-t p-4">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
           <div className="flex-1">
             <div className="flex justify-between mb-1 text-sm text-gray-600">
               <span>
-                {isProcessing && totalEmails
+                {isStopped
+                  ? 'Processo interrompido! Clique em Novo para reiniciar'
+                  : isProcessing && totalEmails
                   ? 'Processando...'
-                  : results.length >= (totalEmails ?? 0)
+                  : results.length >= (totalEmails ?? 0) && totalEmails !== null
                   ? 'Concluído ✅'
                   : 'Aguardando...'}
               </span>
