@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import EventSourceResponse
 from pydantic import BaseModel
 from classifier import classify_email
 from process_email import process_email
@@ -48,34 +48,33 @@ async def read_email(files: list[UploadFile] = None, text: str = Form(None)):
         return {"error": "Invalid data"}
 
     process_id = str(uuid.uuid4())
-    running_tasks[process_id] = True 
+    running_tasks[process_id] = True
 
-    async def event_stream():
-        yield json.dumps({"process_id": process_id}) + "\n"
+    async def event_generator():
+        # Envia o process_id inicialmente
+        yield f"{json.dumps({'process_id': process_id})}\n"
+
         all_emails = []
-
         for raw in contents:
             all_emails.extend(split_emails(raw))
 
-        yield json.dumps({"total": len(all_emails)}) + "\n"
+        # Envia total de emails
+        yield f"{json.dumps({'total': len(all_emails)})}\n"
 
         for email in all_emails:
-            
             if not running_tasks.get(process_id, False):
                 print(f"Processamento {process_id} cancelado")
                 break
 
             await asyncio.sleep(0)
-
             clean_text = process_email(email)
             result = classify_email(clean_text)
-            yield json.dumps(result) + "\n"
+
+            yield f"{json.dumps(result)}\n"
 
         running_tasks.pop(process_id, None)
 
-
-    headers = {"Access-Control-Allow-Origin": "*"}
-    return StreamingResponse(event_stream(), media_type="application/json", headers=headers)
+    return EventSourceResponse(event_generator())
 
 
 @app.post("/stop/{process_id}")
