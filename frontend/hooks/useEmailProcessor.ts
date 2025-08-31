@@ -28,7 +28,7 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/proxy-read`, {
+      const res = await fetch('/api/proxy-read', {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -59,7 +59,10 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
               total = data.total;
               onStart(total, processId, controller);
             } else {
-              onResult({ category: data.Categoria, response: data.Resposta });
+              onResult({
+                category: data.Categoria || data.category,
+                response: data.Resposta || data.response,
+              });
             }
           }
         }
