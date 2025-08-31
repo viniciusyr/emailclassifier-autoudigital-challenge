@@ -2,7 +2,7 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN python -m nltk.downloader punkt punkt_tab stopwords wordnet \
@@ -10,6 +10,6 @@ RUN python -m nltk.downloader punkt punkt_tab stopwords wordnet \
 
 ENV NLTK_DATA=/usr/local/nltk_data
 
-COPY . .
+COPY backend/ ./backend
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
