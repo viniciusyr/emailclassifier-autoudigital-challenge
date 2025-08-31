@@ -14,7 +14,7 @@ app = FastAPI(title="Email Classifier - AutoU")
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://emailclassifier-autoudigital-challenge-8o1l60ynu.vercel.app/"
+    "https://emailclassifier-autoudigital-challe.vercel.app"
 ]
 
 app.add_middleware(
