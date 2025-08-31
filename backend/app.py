@@ -1,5 +1,3 @@
-from importlib.metadata import files
-from pydoc import text
 from fastapi import FastAPI, UploadFile, Form, Request
 from classifier import classify_email
 from process_email import process_email
