@@ -43,7 +43,7 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
       const decoder = new TextDecoder();
       let buffer = '';
       let total = 0;
-      const processId = Math.random().toString(36).substr(2, 9); // ID simples
+      const processId = Math.random().toString(36).substr(2, 9);
       onStart(total, processId, controller);
 
       while (true) {

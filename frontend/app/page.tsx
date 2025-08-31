@@ -20,6 +20,8 @@ export default function Home() {
   const [currentProcessId, setCurrentProcessId] = useState<string>('');
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
   const handleStart = (total: number, processId: string, controller: AbortController) => {
     abortControllerRef.current = controller;
     setCurrentProcessId(processId);
@@ -39,7 +41,7 @@ export default function Home() {
       abortControllerRef.current = null;
 
       if (currentProcessId) {
-        await fetch(`http://0.0.0.0:8000/stop/${currentProcessId}`, { method: 'POST' });
+        await fetch(`${API_URL}/stop/${currentProcessId}`, { method: 'POST' });
       }
 
       setIsProcessing(false);
