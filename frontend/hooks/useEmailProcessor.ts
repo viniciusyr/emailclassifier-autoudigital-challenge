@@ -17,26 +17,43 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
   const processIdRef = useRef<string | null>(null);
 
   const processEmails = async (file: File | null, text: string) => {
-    if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
+    if (!file && !text) {
+      alert('Envie um arquivo ou digite o texto.');
+      return;
+    }
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    const formData = new FormData();
-    if (file) formData.append('files', file);
-    if (!file && text) formData.append('text', text);
+    let requestBody: FormData | string;
+    let requestHeaders: HeadersInit = {};
+    const backendEndpoint = file ? '/read' : '/read/json';
+
+    if (file) {
+      const formData = new FormData();
+      formData.append('files', file);
+      requestBody = formData;
+    } else {
+      requestBody = JSON.stringify({ text });
+      requestHeaders = { 'Content-Type': 'application/json' };
+    }
 
     setLoading(true);
 
     try {
       const res = await fetch('/api/proxy-read', {
         method: 'POST',
-        body: formData,
+        body: requestBody,
+        headers: requestHeaders,
         signal: controller.signal,
       });
 
-      if (!res.ok) throw new Error('Erro no servidor');
-      if (!res.body) throw new Error('No response body');
+      if (!res.ok) {
+        throw new Error('Erro no servidor');
+      }
+      if (!res.body) {
+        throw new Error('No response body');
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -54,13 +71,13 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
         for (let line of lines) {
           if (line.trim()) {
             const data = JSON.parse(line);
-
+            
             if ('process_id' in data) {
-              processIdRef.current = data.process_id;
-              onStart(total, data.process_id, controller);
+                processIdRef.current = data.process_id;
+                onStart(total, data.process_id, controller);
             } else if ('total' in data) {
-              total = data.total;
-              onStart(total, processIdRef.current || '', controller);
+                total = data.total;
+                onStart(total, processIdRef.current || '', controller);
             } else {
               onResult({
                 category: data.Categoria || data.category,
@@ -71,8 +88,11 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
         }
       }
     } catch (err: any) {
-      if (err.name === 'AbortError') console.log('Processo interrompido');
-      else console.error(err);
+      if (err.name === 'AbortError') {
+        console.log('Processo interrompido');
+      } else {
+        console.error(err);
+      }
     } finally {
       setLoading(false);
     }
