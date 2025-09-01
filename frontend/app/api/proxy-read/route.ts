@@ -21,6 +21,10 @@ export async function POST(request: NextRequest) {
   try {
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
     const contentType = request.headers.get('content-type');
+
+    if (!API_URL) {
+      return new NextResponse('API URL not configured', { status: 500 });
+    }
     
     let backendUrl;
     let requestBody;
@@ -31,15 +35,7 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       requestBody = formData;
       backendUrl = `${API_URL}/read`;
-    } 
-
-    else if (contentType?.includes('application/json')) {
-      requestBody = JSON.stringify(await request.json());
-      headers.set('Content-Type', 'application/json');
-      backendUrl = `${API_URL}/read/json`;
-    }
-
-    else {
+    } else {
       requestBody = await request.arrayBuffer();
       backendUrl = `${API_URL}/read`;
     }
