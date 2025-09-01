@@ -22,24 +22,27 @@ export async function POST(request: NextRequest) {
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
     const contentType = request.headers.get('content-type');
     
-    let backendUrl = `${API_URL}/read`;
+    let backendUrl;
     let requestBody;
-    
-    if (contentType?.includes('application/json')) {
-      requestBody = JSON.stringify(await request.json());
-      backendUrl = `${API_URL}/read/json`;
-    } 
-   
-    else if (contentType?.includes('multipart/form-data')) {
-      requestBody = request.body;
-    } 
-  
-    else {
-      requestBody = await request.arrayBuffer();
-    }
-    
     const headers = new Headers(request.headers);
     headers.delete('host');
+
+    if (contentType?.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      requestBody = formData;
+      backendUrl = `${API_URL}/read`;
+    } 
+
+    else if (contentType?.includes('application/json')) {
+      requestBody = JSON.stringify(await request.json());
+      headers.set('Content-Type', 'application/json');
+      backendUrl = `${API_URL}/read/json`;
+    }
+
+    else {
+      requestBody = await request.arrayBuffer();
+      backendUrl = `${API_URL}/read`;
+    }
 
     const fetchRes = await fetch(backendUrl, {
       method: 'POST',
