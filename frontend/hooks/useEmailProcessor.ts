@@ -14,6 +14,7 @@ interface UseEmailProcessorProps {
 export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps) {
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const processIdRef = useRef<string | null>(null);
 
   const processEmails = async (file: File | null, text: string) => {
     if (!file && !text) return alert('Envie um arquivo ou digite o texto.');
@@ -41,8 +42,6 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
       const decoder = new TextDecoder();
       let buffer = '';
       let total = 0;
-      const processId = Math.random().toString(36).substr(2, 9);
-      onStart(total, processId, controller);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -55,9 +54,13 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
         for (let line of lines) {
           if (line.trim()) {
             const data = JSON.parse(line);
-            if ('total' in data) {
+
+            if ('process_id' in data) {
+              processIdRef.current = data.process_id;
+              onStart(total, data.process_id, controller);
+            } else if ('total' in data) {
               total = data.total;
-              onStart(total, processId, controller);
+              onStart(total, processIdRef.current || '', controller);
             } else {
               onResult({
                 category: data.Categoria || data.category,
@@ -75,10 +78,25 @@ export function useEmailProcessor({ onResult, onStart }: UseEmailProcessorProps)
     }
   };
 
-  const stopProcessing = () => {
+  const stopProcessing = async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+
+      if (processIdRef.current) {
+        try {
+          await fetch('/api/proxy-stop', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ processId: processIdRef.current }),
+          });
+        } catch (err) {
+          console.error('Falha ao enviar requisição de interrupção via proxy:', err);
+        }
+      }
       abortControllerRef.current = null;
+      processIdRef.current = null;
     }
   };
 

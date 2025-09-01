@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from classifier import classify_email
 from process_email import process_email
@@ -84,8 +84,5 @@ async def read_email(files: list[UploadFile] = None, text: str = Form(None)):
 def stop_process(process_id: str):
     if process_id in running_tasks:
         running_tasks[process_id] = False
-        response = {"status": "stopped", "process_id": process_id}
-    else:
-        response = {"status": "not_found", "process_id": process_id}
-
-    return JSONResponse(content=response, headers={"Access-Control-Allow-Origin": "*"})
+        return {"status": "stopped", "process_id": process_id}
+    return {"status": "not_found", "process_id": process_id}
